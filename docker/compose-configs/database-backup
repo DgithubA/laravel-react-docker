@@ -1,0 +1,1 @@
+* * * * * docker run --rm -e DB_USER="techmart" DB_PASS="password" -e DB_DUMP_ONCE=true -e DB_NAMES="laravel" -e DB_DUMP_TARGET=/root/db-backup -e DB_SERVER=db --user 0 --network internal_net databack/mysql-backup dump

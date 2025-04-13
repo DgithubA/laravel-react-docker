@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+# Run on container start
+
+function container_setup() {
+    cp -rf /var/www/public/* /var/www/public-link
+    php artisan migrate # this must run in container after db healthcheck pass.
+    php artisan storage:link # run in container after storage volume attached.
+}
+
+if [ $# -eq 1 ]; then
+    if [ "$1" == "horizon" ]; then
+        exec /usr/bin/supervisord -c /etc/supervisor/conf.d/horizon.conf
+    elif [ "$1" == "queue" ]; then
+        exec /usr/bin/supervisord -c /etc/supervisor/conf.d/queue.conf
+    elif [ "$1" == "serve" ]; then
+        [ -n "$2" ] && OCTANE_SERVER="$2"
+        container_setup
+        exec php artisan octane:start --no-interaction --no-ansi  --host=0.0.0.0  --server=${OCTANE_SERVER:-swoole} --port=${OCTANE_PORT:-${APP_PORT:-8000}} --workers=${OCTANE_WORKERS:-auto} --task-workers=${OCTANE_TASK_WORKERS:-auto} --max-requests=${OCTANE_MAX_REQUESTS:-500}
+    elif [ "$1" == "scheduler" ]; then
+        exec /usr/bin/supercronic /etc/supercronic/conf.d/laravel-scheduler
+    elif [ "$1" == "php-fpm" ]; then
+        container_setup
+        exec php-fpm
+    fi
+fi
+
+# Default behavior
+if [ $# -gt 0 ]; then
+    exec "$@"
+else
+    exec bash
+fi

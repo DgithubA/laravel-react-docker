@@ -1,0 +1,94 @@
+services:
+  api: &api
+    image: 
+    volumes:
+      - type: volume
+        source: storage_vol
+        target: /var/www/storage
+    depends_on:
+      - redis
+      - db
+    command: ["serve"]
+    networks:
+      - proxiable
+      - db_network
+      - redis_network
+
+  queue:
+    <<: *api
+    ports: []
+    depends_on:
+      - api
+    user: root
+    networks:
+      - db_network
+      - redis_network
+    command: ["queue"]
+  scheduler:
+    <<: *api
+    ports: []
+    depends_on:
+      - api
+    networks:
+      - db_network
+      - redis_network
+    command: ["scheduler"]
+    
+  db:
+    image: mariadb:11.4.3-ubi9
+    networks:
+      - db_network
+    volumes:
+      - db-data:/var/lib/mysql:Z
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    depends_on:
+      - db
+    restart: always
+    networks:
+      - db_network
+      - proxiable
+
+  redis:
+    image: redis:7.2-alpine3.21
+    volumes:
+      - type: volume
+        source: redis-data
+        target: /data
+      # - 'docker/redis.conf:/usr/local/etc/redis/redis.conf:ro'
+    networks:
+      - redis_network
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      retries: 3
+      timeout: 5s
+  # memcached:
+  # minio:
+  # elasticsearch:
+  # meilisearch:
+  # mailpit:
+
+volumes:
+  redis-data:
+  db-data:
+  storage_vol:
+
+networks:
+  db_network:
+    driver: overlay
+    attachable: true # for database backup with cron container
+  redis_network:
+    driver: overlay
+    attachable: false
+  proxiable:
+    external: true

@@ -1,0 +1,1 @@
+* * * * * /usr/local/bin/php /var/www/artisan schedule:run >> /var/www/storage/logs/project-scheduler 2>&1

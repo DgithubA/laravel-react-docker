@@ -1,0 +1,102 @@
+services:
+  
+  nginx:
+    image: nginx
+    volumes:
+      - type: volume
+        source: storage_vol
+        target: /var/www/storage
+        read_only: true
+      - type: volume
+        source: public_vol
+        target: /var/www/public
+        read_only: true
+      - type: bind
+        source: ./compose-configs/nginx/default.conf
+        target: /etc/nginx/conf.d/default.conf
+    depends_on:
+      - api
+    networks:
+      - proxiable
+
+
+
+  api: &api
+    image: {{ image_name }}
+    volumes:
+      - type: volume
+        source: storage_vol
+        target: /var/www/storage
+      - type: volume
+        source: public_vol
+        target: /var/www/public-link
+    depends_on:
+      db: 
+        condition: service_healthy
+    command: ["php-fpm"]
+    networks:
+      - proxiable
+      - db_network
+      - redis_network
+
+  queue:
+    <<: *api
+    ports: []
+    depends_on:
+      - api
+    networks:
+      - db_network
+      - redis_network
+    command: ["queue"]
+  scheduler:
+    <<: *api
+    ports: []
+    depends_on:
+      - api
+    networks:
+      - db_network
+      - redis_network
+    command: ["scheduler"]
+    
+  db:
+    image: mariadb:11.4.3-ubi9
+    networks:
+      - db_network
+    volumes:
+      - db-data:/var/lib/mysql:Z
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    depends_on:
+      - db
+    restart: always
+    networks:
+      - db_network
+      - proxiable
+    
+    ports:
+      - "8080:80"
+
+  # redis:
+  # memcached:
+  # minio:
+  # elasticsearch:
+  # meilisearch:
+  # mailpit:
+
+volumes:
+  public_vol:
+  redis-data:
+  db-data:
+  storage_vol:
+
+networks:
+  db_network:
+  redis_network:
+  proxiable:
