@@ -3,37 +3,35 @@ ARG NODE_VERSION=22
 ARG PHP_VERSION=8.3-fpm
 FROM node:${NODE_VERSION}-alpine AS nodeimage
 FROM php:${PHP_VERSION}-alpine AS base
-# Install system dependencies and PHP extensions
+
+# Install system dependencies
 RUN apk update && apk add --no-cache \
-    mariadb-client \
-    mongodb-tools \
-    bash \
-    supervisor \
-    dcron \
-    zip \
-    libzip-dev \
-    freetype-dev \
-    libjpeg-turbo-dev \
-    libpng-dev \
-    oniguruma-dev \
-    gettext-dev \
-    curl-dev \
-    autoconf \
-    gcc \
-    make \
-    musl-dev \
-    nodejs-current  \
-    npm  \
-    sqlite \
-    tzdata \
-    nginx curl ca-certificates \
+    bash curl ca-certificates git unzip  \
+    supervisor dcron zip tzdata nginx sqlite \
     && rm -rf /var/cache/apk/*
 
-# Install required extension
-RUN docker-php-ext-install pcntl && pecl install redis && docker-php-ext-enable redis \
-    && pecl install mongodb && docker-php-ext-enable mongodb \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_mysql gd bcmath exif gettext opcache
+# Install build-time extentions
+RUN apk add --no-cache autoconf gcc make musl-dev \
+    postgresql-dev icu-dev libicu-dev libzip-dev gettext-dev \
+    freetype-dev libjpeg-turbo-dev libpng-dev openssl-dev
+
+# core extentions:
+# ctype curl date dom fileinfo filter hash iconv json libxml
+# mbstring mysqlnd openssl pcre PDO pdo_sqlite Phar posix random
+# readline Reflection session SimpleXML sodium SPL sqlite3 standard
+# tokenizer xml xmlreader xmlwriter Zend OPcache zlib  Zend OPcache
+
+#install redis & mongo extention
+RUN docker-php-ext-install pcntl && \
+    pecl install --onlyreqdeps redis mongodb && \
+    docker-php-ext-enable mongodb redis && \
+    rm -rf /tmp/pear
+
+#install gd extension
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg && docker-php-ext-install gd
+
+# Install other required extension
+RUN docker-php-ext-install pdo_mysql pdo_pgsql bcmath exif gettext zip intl
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
