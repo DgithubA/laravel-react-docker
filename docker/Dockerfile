@@ -10,10 +10,8 @@ RUN apk update && apk add --no-cache \
     supervisor dcron zip tzdata nginx sqlite \
     && rm -rf /var/cache/apk/*
 
-# Install build-time extentions
-RUN apk add --no-cache autoconf gcc make musl-dev \
-    postgresql-dev icu-dev libicu-dev libzip-dev gettext-dev \
-    freetype-dev libjpeg-turbo-dev libpng-dev openssl-dev
+# https://github.com/mlocati/docker-php-extension-installer
+ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
 
 # core extentions:
 # ctype curl date dom fileinfo filter hash iconv json libxml
@@ -21,17 +19,9 @@ RUN apk add --no-cache autoconf gcc make musl-dev \
 # readline Reflection session SimpleXML sodium SPL sqlite3 standard
 # tokenizer xml xmlreader xmlwriter Zend OPcache zlib  Zend OPcache
 
-#install redis & mongo extention
-RUN docker-php-ext-install pcntl && \
-    pecl install --onlyreqdeps redis mongodb && \
-    docker-php-ext-enable mongodb redis && \
-    rm -rf /tmp/pear
-
-#install gd extension
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg && docker-php-ext-install gd
-
-# Install other required extension
-RUN docker-php-ext-install pdo_mysql pdo_pgsql bcmath exif gettext zip intl
+#install required extention
+RUN install-php-extensions gd mongodb redis \
+    pdo_mysql pdo_pgsql bcmath exif gettext zip intl
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
