@@ -23,12 +23,6 @@ ADD --chmod=0755 https://github.com/mlocati/docker-php-extension-installer/relea
 RUN install-php-extensions gd mongodb redis \
     pdo_mysql pdo_pgsql bcmath exif gettext zip intl
 
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-#Install node
-COPY --from=nodeImage /usr/local/bin /usr/local/bin
-COPY --from=nodeImage /usr/local/lib /usr/local/lib
 
 ARG WORKDIR=/var/www/html
 WORKDIR $WORKDIR
@@ -52,6 +46,13 @@ RUN mkdir -p /var/log/supervisor /var/log/nginx /var/cache/nginx /etc/nginx/conf
     /var/run/nginx.pid
 
 FROM base AS make
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+#Install node
+COPY --from=nodeImage /usr/local/bin /usr/local/bin
+COPY --from=nodeImage /usr/local/lib /usr/local/lib
 
 COPY composer.* .
 # Install dependencies
