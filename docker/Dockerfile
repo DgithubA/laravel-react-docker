@@ -27,7 +27,8 @@ RUN install-php-extensions gd mongodb redis \
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 #Install node
-COPY --from=nodeImage /usr/local /usr/local
+COPY --from=nodeImage /usr/local/bin /usr/local/bin
+COPY --from=nodeImage /usr/local/lib /usr/local/lib
 
 ARG WORKDIR=/var/www/html
 WORKDIR $WORKDIR
@@ -36,10 +37,8 @@ ENV USER_NAME=${USER_NAME}
 ARG GROUP_NAME=www-data
 ENV GROUP_NAME=${GROUP_NAME}
 
-
-RUN mkdir -p /var/log/supervisor /var/log/nginx /var/cache/nginx /etc/nginx/conf.d
-
-RUN touch /var/run/nginx.pid && \
+RUN mkdir -p /var/log/supervisor /var/log/nginx /var/cache/nginx /etc/nginx/conf.d &&  \
+    touch /var/run/nginx.pid && \
     chown -R $USER_NAME:$USER_NAME \
     $PHP_INI_DIR/conf.d/ \
     /var/cache \
@@ -52,24 +51,25 @@ RUN touch /var/run/nginx.pid && \
     /etc/supervisord.conf \
     /var/run/nginx.pid
 
-FROM base AS composer
+FROM base AS make
 
-# Copy composer required file for install dependencies
-COPY --chown=${USER_NAME}:${GROUP_NAME} composer.* .
-
-USER ${USER_NAME}
-
+COPY composer.* .
 # Install dependencies
 RUN composer install --no-dev --no-autoloader --no-interaction --no-progress --prefer-dist --no-scripts --no-ansi
 
-FROM base AS npm-install
-
 # Copy built assets
-COPY --chown=${USER_NAME}:${GROUP_NAME} package*.json .
-
-USER ${USER_NAME}
+COPY package*.json .
 
 RUN npm ci || npm i
+
+# Copy the entire Laravel application code into the container
+COPY --exclude=docker . .
+
+# dump autoload after install dependencies
+RUN composer dump-autoload --optimize --no-interaction --no-ansi
+
+# build npm
+RUN npm run build
 
 FROM base AS main
 
@@ -90,26 +90,11 @@ COPY --chown=${USER_NAME}:${GROUP_NAME} docker/php.ini ${PHP_INI_DIR}/conf.d/cus
 # Copy entrypoint script
 COPY --chown=${USER_NAME}:${GROUP_NAME} docker/entrypoint.sh docker/startup.sh /usr/local/bin/
 
-RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/startup.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/startup.sh /usr/sbin/crond
 
-RUN chmod +x /usr/sbin/crond
-
-
-COPY --from=composer $WORKDIR .
-COPY --from=npm-install $WORKDIR .
-
-# Copy the entire Laravel application code into the container
-COPY --chown=${USER_NAME}:${GROUP_NAME} --exclude=docker . .
+COPY --from=make --chown=${USER_NAME}:${GROUP_NAME} --exclude=node_modules $WORKDIR .
 
 USER ${USER_NAME}
-
-# dump autoload after install dependencies
-RUN composer dump-autoload --optimize --no-interaction --no-ansi
-
-# build npm
-RUN npm run build
-
-
 EXPOSE 80
 ENTRYPOINT ["entrypoint.sh"]
 CMD ["run","laravel-web"]

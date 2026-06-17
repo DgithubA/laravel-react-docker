@@ -78,4 +78,10 @@ tests/
 phpunit.xml
 phpunit.xml.dist
 
+# dev tools
+.prettierignore
+.prettierrc
+eslint.config.js
+pint.json
+
 
