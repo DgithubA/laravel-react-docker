@@ -82,4 +82,10 @@ At container startup:
 3. Selected services are enabled via symlinks
 4. `supervisord` is started
 
+# 🗒️ Changes and optimizations
 
+1. commit [09dc9450](https://github.com/DgithubA/laravel-react-docker/commit/09dc94503e1ac908d1202c97754f3e613702fb1b): use external extension installer ([docker-php-extension-installer](https://github.com/mlocati/docker-php-extension-installer)) to reduce image size. `1.47GB → 658MB`
+
+2. commit [8db49bca](https://github.com/DgithubA/laravel-react-docker/commit/8db49bca011f115d64bc261ec3f95c97352d668a): better multi-stage build to reduce image size. `658MB → 400MB`
+
+3. commit [54575073](https://github.com/DgithubA/laravel-react-docker/commit/5457507325dbb48ba081ec8b5b20bb7d99947981): install composer and npm only in build stage to reduce image size. `400MB → 258MB`
