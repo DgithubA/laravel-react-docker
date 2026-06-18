@@ -1,0 +1,12 @@
+services:
+    laravel:
+        container_name: laravel-react-docker
+        image: laravel-react-docker:v1
+        build:
+            dockerfile: docker/Dockerfile
+            context: .
+        env_file:
+            -   ./.env
+        ports:
+            - "8080:80"
+        command: ["run", "laravel-web", "laravel-worker", "laravel-schedule"]
